@@ -17,12 +17,12 @@ def contacts_view(request):
         }
     )
 
-class RunViewSet(viewsets.ReadOnlyModelViewSet):
+class RunViewSet(viewsets.ModelViewSet):
     queryset = Run.objects.select_related('athlete').all()
     serializer_class = RunSerializer
 
 
-class UserViewSet(viewsets.ModelViewSet):
+class UserViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = settings.AUTH_USER_MODEL.objects.all()
     serializer_class = UserSerializer
 
