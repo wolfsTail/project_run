@@ -23,7 +23,7 @@ class RunViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 class UserViewSet(viewsets.ModelViewSet):
-    queryset = settings.AUTG_USER_MODEL.objects.all()
+    queryset = settings.AUTH_USER_MODEL.objects.all()
     serializer_class = UserSerializer
 
     def get_queryset(self):
