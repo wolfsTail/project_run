@@ -2,7 +2,7 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import viewsets
 
-from django.conf import settings
+from django.contrib.auth.models import User
 
 from .models import Run
 from .serializers import RunSerializer, UserSerializer
@@ -23,7 +23,7 @@ class RunViewSet(viewsets.ModelViewSet):
 
 
 class UserViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = settings.AUTH_USER_MODEL.objects.all()
+    queryset = User.objects.all()
     serializer_class = UserSerializer
 
     def get_queryset(self):

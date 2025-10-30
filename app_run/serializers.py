@@ -1,12 +1,12 @@
 from rest_framework import serializers
 from .models import Run
-from django.conf import settings
+from django.contrib.auth.models import User
 
 
 
 class UserSerializerInner(serializers.ModelSerializer):
     class Meta:
-        model = settings.AUTH_USER_MODEL
+        model = User
         fields = ('id', 'username', 'last_name', 'first_name')
 
 
@@ -20,7 +20,7 @@ class RunSerializer(serializers.ModelSerializer):
 class UserSerializer(serializers.ModelSerializer):
     type = serializers.SerializerMethodField()
     class Meta:
-        model = settings.AUTH_USER_MODEL
+        model = User
         fields = ('id', 'date_joined', 'username', 'last_name', 'first_name', 'type')
 
     def get_type(self, obj):
