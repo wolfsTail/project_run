@@ -33,4 +33,6 @@ class UserViewSet(viewsets.ModelViewSet):
             return qs
         if type == 'coach':
             return qs.filter(is_staff=True)
-        return qs.filter(is_staff=False)
+        if type == 'athlete':
+            return qs.filter(is_staff=False)
+        return qs
