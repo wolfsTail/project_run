@@ -30,7 +30,7 @@ router.register('api/users', views.UserViewSet)
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/company_details/', views.contacts_view),
-    path('api/runs/<int:run_id>/start', views.StartRunApiView.as_view(),),
-    path('api/runs/<int:run_id>/stop', views.StopRunApiView.as_view(),),
+    path('api/runs/<int:run_id>/start/', views.StartRunApiView.as_view(),),
+    path('api/runs/<int:run_id>/stop/', views.StopRunApiView.as_view(),),
     path('', include(router.urls))
 ]
