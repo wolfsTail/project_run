@@ -38,7 +38,7 @@ class StartRunApiView(APIView):
             )
 
         current.status = Run.STATUS_CHOICES[1][0]
-        current.save(update_fileds=["status"])
+        current.save(update_fields=["status"])
 
         return Response(
             {
@@ -64,7 +64,7 @@ class StopRunApiView(APIView):
             )
 
         current.status = Run.STATUS_CHOICES[2][0]
-        current.save(update_fileds=["status"])
+        current.save(update_fields=["status"])
 
         return Response(
             {
