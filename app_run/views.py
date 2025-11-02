@@ -14,6 +14,8 @@ from django_filters.rest_framework import DjangoFilterBackend
 from django.db import transaction
 from django.db.models import Count, Q
 
+from haversine import haversine, Unit
+
 from .models import AthleteInfo, Challenge, Position, Run
 from .serializers import (
     RunSerializer, 
@@ -120,11 +122,29 @@ class StopRunApiView(APIView):
                 Challenge.objects.create(
                     athlete=current.athlete, full_name=TEN_RUNS_CHALLENGE
                 )
+            pts = list(
+                Position.objects
+                .filter(run=current)
+                .order_by("created_at", "id")
+                .values_list("latitude", "longitude")
+            )
+
+            distance_km = 0.0
+            if len(pts) >= 2:
+                prev = (float(pts[0][0]), float(pts[0][1]))
+                for lat, lon in pts[1:]:
+                    cur = (float(lat), float(lon))
+                    distance_km += haversine(prev, cur, unit=Unit.KILOMETERS)
+                    prev = cur
+
+            current.distance = round(distance_km, 4)
+            current.save(update_fields=["distance"])
 
         return Response(
             {
                 "id": current.id,
                 "status": current.status,
+                "distance": current.distance,
             },
             status=status.HTTP_200_OK,
         )
