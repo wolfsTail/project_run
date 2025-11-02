@@ -5,7 +5,7 @@ from django.conf import settings
 class Run(models.Model):
     STATUS_CHOICES = [
         ("init", "init"),
-        ("in_progres", "in_progres"),
+        ("in_progress", "in_progress"),
         ("finished", "finished"),
     ]
     created_at = models.DateTimeField(auto_now_add=True)
