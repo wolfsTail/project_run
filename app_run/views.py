@@ -132,6 +132,4 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
         elif t == 'athlete':
             qs = qs.filter(is_staff=False)
 
-        return qs.annotate(
-            runs_finished=Count('runs', filter=Q(runs__status='finished'))
-        )
+        return qs
