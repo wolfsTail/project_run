@@ -118,7 +118,7 @@ class RunViewSet(viewsets.ModelViewSet):
 
 class UserViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = UserSerializer
-    pagination_class = OptionalPagePagination
+    pagination_class = PagePagination
     filter_backends = [SearchFilter, OrderingFilter]
     search_fields = ['=first_name', '=last_name']
     ordering_fields = ['date_joined']
