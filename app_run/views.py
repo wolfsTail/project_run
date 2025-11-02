@@ -13,8 +13,8 @@ from django.http import Http404
 from django_filters.rest_framework import DjangoFilterBackend
 from django.db.models import Count, Q
 
-from .models import Run
-from .serializers import RunSerializer, UserSerializer
+from .models import AthleteInfo, Run
+from .serializers import RunSerializer, UserSerializer, AthleteInfoSerializer
 
 @api_view(['GET'])
 def contacts_view(request):
@@ -134,3 +134,22 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
             qs = qs.filter(is_staff=False)
 
         return qs
+
+
+class AthleteInfoView(APIView):
+    def get_user(self, user_id: int) -> User:
+        return get_object_or_404(User, pk=user_id)
+
+    def get(self, request, user_id: int):
+        user = self.get_user(user_id)
+        info, _ = AthleteInfo.objects.get_or_create(user=user)
+        data = AthleteInfoSerializer(info).data
+        return Response(data, status=status.HTTP_200_OK)
+
+    def put(self, request, user_id: int):
+        user = self.get_user(user_id)
+        info, _ = AthleteInfo.objects.get_or_create(user=user)
+        serializer = AthleteInfoSerializer(instance=info, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
