@@ -117,6 +117,7 @@ class RunViewSet(viewsets.ModelViewSet):
 
 
 class UserViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = User.objects.all()
     serializer_class = UserSerializer
     pagination_class = OptionalPagePagination
     filter_backends = [SearchFilter, OrderingFilter]
@@ -124,7 +125,7 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
     ordering_fields = ['date_joined']
 
     def get_queryset(self):
-        qs = User.objects.all().exclude(is_superuser=True)
+        qs = self.queryset.exclude(is_superuser=True)
 
         t = self.request.query_params.get('type')
         if t == 'coach':
