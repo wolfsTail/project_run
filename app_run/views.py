@@ -11,6 +11,7 @@ from django.contrib.auth.models import User
 from django.shortcuts import get_object_or_404
 from django.http import Http404
 from django_filters.rest_framework import DjangoFilterBackend
+from django.db.models import Count, Q
 
 from .models import Run
 from .serializers import RunSerializer, UserSerializer
@@ -116,7 +117,6 @@ class RunViewSet(viewsets.ModelViewSet):
 
 
 class UserViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = User.objects.all()
     serializer_class = UserSerializer
     pagination_class = OptionalPagePagination
     filter_backends = [SearchFilter, OrderingFilter]
@@ -124,12 +124,14 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
     ordering_fields = ['date_joined']
 
     def get_queryset(self):
-        qs = self.queryset.exclude(is_superuser=True)
-        type = self.request.query_params.get('type', None)
-        if not type:
-            return qs
-        if type == 'coach':
-            return qs.filter(is_staff=True)
-        if type == 'athlete':
-            return qs.filter(is_staff=False)
-        return qs
+        qs = User.objects.all().exclude(is_superuser=True)
+
+        t = self.request.query_params.get('type')
+        if t == 'coach':
+            qs = qs.filter(is_staff=True)
+        elif t == 'athlete':
+            qs = qs.filter(is_staff=False)
+
+        return qs.annotate(
+            runs_finished=Count('runs', filter=Q(runs__status='finished'))
+        )
