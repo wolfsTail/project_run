@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     #others
     'rest_framework',
+    'django_filters',
     #local
     'app_run',
 ]
