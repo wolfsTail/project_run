@@ -14,8 +14,14 @@ from django_filters.rest_framework import DjangoFilterBackend
 from django.db import transaction
 from django.db.models import Count, Q
 
-from .models import AthleteInfo, Challenge, Run
-from .serializers import RunSerializer, UserSerializer, AthleteInfoSerializer, ChallengeSerializer
+from .models import AthleteInfo, Challenge, Position, Run
+from .serializers import (
+    RunSerializer, 
+    UserSerializer, 
+    AthleteInfoSerializer, 
+    ChallengeSerializer,
+    PositionSerializer,
+)
 
 
 
@@ -178,3 +184,21 @@ class ChallengeViewSet(viewsets.ReadOnlyModelViewSet):
     pagination_class = OptionalPagePagination
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ["athlete"]
+
+
+class PositionViewSet(viewsets.ModelViewSet):
+    queryset = Position.objects.select_related("run").order_by("id")
+    serializer_class = PositionSerializer
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ["run"]
+    http_method_names = ["get", "post", "delete", "head", "options"]
+
+    def create(self, request, *args, **kwargs):
+        return super().create(request, *args, **kwargs)
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        run_id = self.request.query_params.get("run")
+        if run_id:
+            qs = qs.filter(run_id=run_id)
+        return qs

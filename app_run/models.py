@@ -34,3 +34,10 @@ class Challenge(models.Model):
 
     class Meta:
         unique_together = (("athlete", "full_name"),)
+
+
+class Position(models.Model):
+    run = models.ForeignKey(Run, on_delete=models.CASCADE, related_name="positions")
+    latitude = models.DecimalField(max_digits=8, decimal_places=4)
+    longitude = models.DecimalField(max_digits=9, decimal_places=4)
+    created_at = models.DateTimeField(auto_now_add=True)
