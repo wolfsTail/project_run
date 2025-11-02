@@ -23,3 +23,14 @@ class AthleteInfo(models.Model):
     )
     goals = models.TextField(blank=True, default="")
     weight = models.IntegerField(null=True, blank=True)
+
+
+class Challenge(models.Model):
+    full_name = models.CharField(max_length=255)
+    athlete = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="challenges"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = (("athlete", "full_name"),)

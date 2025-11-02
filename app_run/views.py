@@ -11,10 +11,15 @@ from django.contrib.auth.models import User
 from django.shortcuts import get_object_or_404
 from django.http import Http404
 from django_filters.rest_framework import DjangoFilterBackend
+from django.db import transaction
 from django.db.models import Count, Q
 
-from .models import AthleteInfo, Run
-from .serializers import RunSerializer, UserSerializer, AthleteInfoSerializer
+from .models import AthleteInfo, Challenge, Run
+from .serializers import RunSerializer, UserSerializer, AthleteInfoSerializer, ChallengeSerializer
+
+
+
+TEN_RUNS_CHALLENGE = "Сделай 10 Забегов!"
 
 @api_view(['GET'])
 def contacts_view(request):
@@ -95,8 +100,20 @@ class StopRunApiView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        current.status = Run.STATUS_CHOICES[2][0]
-        current.save(update_fields=["status"])
+        with transaction.atomic():
+            current.status = Run.STATUS_CHOICES[2][0]
+            current.save(update_fields=["status"])
+
+            finished_count = Run.objects.filter(
+                athlete=current.athlete, status="finished"
+            ).count()
+
+            if finished_count == 10 and not Challenge.objects.filter(
+                athlete=current.athlete, full_name=TEN_RUNS_CHALLENGE
+            ).exists():
+                Challenge.objects.create(
+                    athlete=current.athlete, full_name=TEN_RUNS_CHALLENGE
+                )
 
         return Response(
             {
@@ -153,3 +170,11 @@ class AthleteInfoView(APIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+class ChallengeViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = Challenge.objects.select_related("athlete").order_by("-created_at")
+    serializer_class = ChallengeSerializer
+    pagination_class = OptionalPagePagination
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ["athlete"]
