@@ -28,8 +28,30 @@ def contacts_view(request):
 
 class PagePagination(PageNumberPagination):
     page_size = 5
-    page_size_query_param  = 'size'
+    page_size_query_param = 'size'
     max_page_size = 50
+
+class OptionalPagePagination(PageNumberPagination):
+    page_size = None
+    page_size_query_param = 'size'
+    max_page_size = 50
+
+    def get_page_size(self, request):
+        if self.page_size_query_param in request.query_params:
+            try:
+                return self._get_size_from_query(request)
+            except ValueError:
+                return None
+        return None
+
+    def _get_size_from_query(self, request):
+        raw = request.query_params[self.page_size_query_param]
+        size = int(raw)
+        if size <= 0:
+            raise ValueError("size must be positive")
+        if self.max_page_size:
+            size = min(size, self.max_page_size)
+        return size
 
 
 class StartRunApiView(APIView):
@@ -87,7 +109,7 @@ class StopRunApiView(APIView):
 class RunViewSet(viewsets.ModelViewSet):
     queryset = Run.objects.select_related('athlete').all()
     serializer_class = RunSerializer
-    pagination_class = PagePagination
+    pagination_class = OptionalPagePagination
     filter_backends = [DjangoFilterBackend, OrderingFilter]
     filterset_fields = ['status', 'athlete']
     ordering_fields = ['created_at']
@@ -96,7 +118,7 @@ class RunViewSet(viewsets.ModelViewSet):
 class UserViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
-    pagination_class = PagePagination
+    pagination_class = OptionalPagePagination
     filter_backends = [SearchFilter, OrderingFilter]
     search_fields = ['=first_name', '=last_name']
     ordering_fields = ['date_joined']
