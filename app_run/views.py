@@ -12,7 +12,7 @@ from django.shortcuts import get_object_or_404
 from django.http import Http404
 from django_filters.rest_framework import DjangoFilterBackend
 from django.db import transaction
-from django.db.models import Count, Q
+from django.db.models import Count, Q, Sum
 
 from haversine import haversine, Unit
 
@@ -28,6 +28,7 @@ from .serializers import (
 
 
 TEN_RUNS_CHALLENGE = "Сделай 10 Забегов!"
+FIFTY_KM_CHALLENGE = "Пробеги 50 километров!"
 
 @api_view(['GET'])
 def contacts_view(request):
@@ -122,6 +123,7 @@ class StopRunApiView(APIView):
                 Challenge.objects.create(
                     athlete=current.athlete, full_name=TEN_RUNS_CHALLENGE
                 )
+
             pts = list(
                 Position.objects
                 .filter(run=current)
@@ -139,6 +141,15 @@ class StopRunApiView(APIView):
 
             current.distance = round(distance_km, 4)
             current.save(update_fields=["distance"])
+
+            total_km = Run.objects.filter(
+                athlete=current.athlete, status="finished"
+            ).aggregate(s=Sum("distance"))["s"] or 0.0
+
+            if total_km >= 50 and not Challenge.objects.filter(
+                athlete=current.athlete, full_name=FIFTY_KM_CHALLENGE
+            ).exists():
+                Challenge.objects.create(athlete=current.athlete, full_name=FIFTY_KM_CHALLENGE)
 
         return Response(
             {
