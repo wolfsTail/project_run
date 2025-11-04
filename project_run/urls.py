@@ -33,6 +33,8 @@ urlpatterns = [
     path('api/company_details/', views.contacts_view),
     path('api/runs/<int:run_id>/start/', views.StartRunApiView.as_view(),),
     path('api/runs/<int:run_id>/stop/', views.StopRunApiView.as_view(),),
-    path("api/athlete_info/<int:user_id>/", views.AthleteInfoView.as_view()),
+    path('api/athlete_info/<int:user_id>/', views.AthleteInfoView.as_view()),
+    path('api/collectible_item/', views.CollectibleItemListView.as_view()),
+    path('api/upload_file/', views.UploadFileView.as_view()),
     path('', include(router.urls))
 ]

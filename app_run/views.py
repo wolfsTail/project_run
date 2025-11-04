@@ -1,10 +1,11 @@
+from openpyxl.reader.excel import load_workbook
 from rest_framework.decorators import api_view
 from rest_framework.filters import SearchFilter
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.filters import OrderingFilter
 from rest_framework.pagination import PageNumberPagination
-from rest_framework import viewsets
+from rest_framework import viewsets, generics
 from rest_framework import status
 
 from django.contrib.auth.models import User
@@ -16,13 +17,14 @@ from django.db.models import Count, Q, Sum
 
 from haversine import haversine, Unit
 
-from .models import AthleteInfo, Challenge, Position, Run
+from .models import AthleteInfo, Challenge, Position, Run, CollectibleItem
 from .serializers import (
     RunSerializer, 
     UserSerializer, 
     AthleteInfoSerializer, 
     ChallengeSerializer,
     PositionSerializer,
+    CollectibleItemSerializer,
 )
 
 
@@ -233,3 +235,86 @@ class PositionViewSet(viewsets.ModelViewSet):
         if run_id:
             qs = qs.filter(run_id=run_id)
         return qs
+
+
+class CollectibleItemListView(generics.ListAPIView):
+    queryset = CollectibleItem.objects.all()
+    serializer_class = CollectibleItemSerializer
+
+
+class UploadFileView(APIView):
+    def post(self, request, *args, **kwargs):
+        file = request.FILES.get("file")
+        if not file:
+            return Response({"detail": "No file provided under 'file'."},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            wb = load_workbook(filename=file, read_only=True, data_only=True)
+        except Exception as e:
+            return Response({"detail": f"Failed to read workbook: {e}"},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        ws = wb.active
+        rows_iter = ws.iter_rows(values_only=True)
+
+        try:
+            header = next(rows_iter)
+        except StopIteration:
+            return Response({"detail": "Empty workbook."},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        header_map = {str(h).strip(): idx for idx, h in enumerate(header)}
+        required = ["Name", "UID", "Value", "Latitude", "Longitude", "URL"]
+        missing = [h for h in required if h not in header_map]
+        if missing:
+            return Response({"detail": f"Missing required columns: {', '.join(missing)}"},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        valid_instances = []
+        invalid_rows = []
+
+        for row in rows_iter:
+            if row is None or all(cell is None for cell in row):
+                continue
+
+            data = {
+                "name": row[header_map["Name"]],
+                "uid": row[header_map["UID"]],
+                "value": row[header_map["Value"]],
+                "latitude": row[header_map["Latitude"]],
+                "longitude": row[header_map["Longitude"]],
+                "picture": row[header_map["URL"]],
+            }
+
+            ser = CollectibleItemSerializer(data=data)
+            if ser.is_valid():
+                valid_instances.append(CollectibleItem(**ser.validated_data))
+            else:
+                invalid_rows.append(list(row))
+
+        created_count = 0
+        with transaction.atomic():
+            if valid_instances:
+                try:
+                    CollectibleItem.objects.bulk_create(valid_instances, ignore_conflicts=False)
+                    created_count = len(valid_instances)
+                except Exception:
+                    created_count = 0
+                    for inst, raw in zip(valid_instances, ws.iter_rows(min_row=2, values_only=True)):
+                        try:
+                            inst.save()
+                            created_count += 1
+                        except Exception:
+                            invalid_rows.append([
+                                inst.name, inst.uid, inst.value, inst.latitude, inst.longitude, inst.picture
+                            ])
+
+        return Response(
+            {
+                "created": created_count,
+                "invalid_rows": invalid_rows,
+            },
+            status=status.HTTP_200_OK
+        )
+
