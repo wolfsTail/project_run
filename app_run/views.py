@@ -261,18 +261,18 @@ class UploadFileView(APIView):
         try:
             header = next(rows_iter)
         except StopIteration:
-            return Response({"detail": "Empty workbook."},
-                            status=status.HTTP_400_BAD_REQUEST)
+            return Response([], status=status.HTTP_200_OK)
 
         header_map = {str(h).strip(): idx for idx, h in enumerate(header)}
         required = ["Name", "UID", "Value", "Latitude", "Longitude", "URL"]
         missing = [h for h in required if h not in header_map]
         if missing:
-            return Response({"detail": f"Missing required columns: {', '.join(missing)}"},
-                            status=status.HTTP_400_BAD_REQUEST)
+            invalid_rows = [list(r) for r in rows_iter if r and any(c is not None for c in r)]
+            return Response(invalid_rows, status=status.HTTP_200_OK)
 
-        valid_instances = []
         invalid_rows = []
+        valid_instances = []
+        seen_uids = set()
 
         for row in rows_iter:
             if row is None or all(cell is None for cell in row):
@@ -287,34 +287,26 @@ class UploadFileView(APIView):
                 "picture": row[header_map["URL"]],
             }
 
+            uid_val = str(data.get("uid") or "").strip()
+            if uid_val in seen_uids:
+                invalid_rows.append(list(row))
+                continue
+            if uid_val:
+                seen_uids.add(uid_val)
+
             ser = CollectibleItemSerializer(data=data)
             if ser.is_valid():
                 valid_instances.append(CollectibleItem(**ser.validated_data))
             else:
                 invalid_rows.append(list(row))
 
-        created_count = 0
         with transaction.atomic():
-            if valid_instances:
+            for inst in valid_instances:
                 try:
-                    CollectibleItem.objects.bulk_create(valid_instances, ignore_conflicts=False)
-                    created_count = len(valid_instances)
+                    inst.save()
                 except Exception:
-                    created_count = 0
-                    for inst, raw in zip(valid_instances, ws.iter_rows(min_row=2, values_only=True)):
-                        try:
-                            inst.save()
-                            created_count += 1
-                        except Exception:
-                            invalid_rows.append([
-                                inst.name, inst.uid, inst.value, inst.latitude, inst.longitude, inst.picture
-                            ])
+                    invalid_rows.append([
+                        inst.name, inst.uid, inst.value, inst.latitude, inst.longitude, inst.picture
+                    ])
 
-        return Response(
-            {
-                "created": created_count,
-                "invalid_rows": invalid_rows,
-            },
-            status=status.HTTP_200_OK
-        )
-
+        return Response(invalid_rows, status=status.HTTP_200_OK)

@@ -80,8 +80,18 @@ class PositionSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({"run": "Run must be in status 'in_progress'"})
         return attrs
 
-
 class CollectibleItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = CollectibleItem
-        fields = '__all__'
+        fields = ["id", "name", "uid", "latitude", "longitude", "picture", "value"]
+        read_only_fields = ["id"]
+
+    def validate_latitude(self, v):
+        if v is None or not (-90 <= float(v) <= 90):
+            raise serializers.ValidationError("Latitude must be between -90 and 90.")
+        return v
+
+    def validate_longitude(self, v):
+        if v is None or not (-180 <= float(v) <= 180):
+            raise serializers.ValidationError("Longitude must be between -180 and 180.")
+        return v
