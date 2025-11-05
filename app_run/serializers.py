@@ -16,12 +16,48 @@ class RunSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
+class CollectibleItemSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CollectibleItem
+        fields = ["id", "name", "uid", "latitude", "longitude", "picture", "value"]
+        read_only_fields = ["id"]
+
+    def validate_latitude(self, v):
+        if v is None or not (-90 <= float(v) <= 90):
+            raise serializers.ValidationError("Latitude must be between -90 and 90.")
+        return v
+
+    def validate_longitude(self, v):
+        if v is None or not (-180 <= float(v) <= 180):
+            raise serializers.ValidationError("Longitude must be between -180 and 180.")
+        return v
+
+
 class UserSerializer(serializers.ModelSerializer):
     type = serializers.SerializerMethodField()
     runs_finished = serializers.SerializerMethodField()
     class Meta:
         model = User
         fields = ('id', 'date_joined', 'username', 'last_name', 'first_name', 'type', 'runs_finished')
+
+    def get_type(self, obj):
+        return "coach" if obj.is_staff else "athlete"
+    
+    def get_runs_finished(self, obj):
+        annotated = getattr(obj, "runs_finished", None)
+        if annotated is not None:
+            return annotated
+        return obj.runs.filter(status="finished").count()
+
+
+class UserDetailSerializer(serializers.ModelSerializer):
+    type = serializers.SerializerMethodField()
+    runs_finished = serializers.SerializerMethodField()
+    items = CollectibleItemSerializer(many=True, read_only=True)
+    
+    class Meta:
+        model = User
+        fields = ('id', 'date_joined', 'username', 'last_name', 'first_name', 'type', 'runs_finished', 'items')
 
     def get_type(self, obj):
         return "coach" if obj.is_staff else "athlete"
@@ -79,19 +115,3 @@ class PositionSerializer(serializers.ModelSerializer):
         if run.status != "in_progress":
             raise serializers.ValidationError({"run": "Run must be in status 'in_progress'"})
         return attrs
-
-class CollectibleItemSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = CollectibleItem
-        fields = ["id", "name", "uid", "latitude", "longitude", "picture", "value"]
-        read_only_fields = ["id"]
-
-    def validate_latitude(self, v):
-        if v is None or not (-90 <= float(v) <= 90):
-            raise serializers.ValidationError("Latitude must be between -90 and 90.")
-        return v
-
-    def validate_longitude(self, v):
-        if v is None or not (-180 <= float(v) <= 180):
-            raise serializers.ValidationError("Longitude must be between -180 and 180.")
-        return v

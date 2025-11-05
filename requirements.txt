@@ -5,3 +5,4 @@ boto3==1.37.37
 djangorestframework==3.16.0
 haversine==2.9.0
 openpyxl==3.1.5
+geopy==2.4.1

@@ -16,11 +16,13 @@ from django.db import transaction
 from django.db.models import Count, Q, Sum
 
 from haversine import haversine, Unit
+from geopy.distance import geodesic
 
 from .models import AthleteInfo, Challenge, Position, Run, CollectibleItem
 from .serializers import (
     RunSerializer, 
-    UserSerializer, 
+    UserSerializer,
+    UserDetailSerializer,
     AthleteInfoSerializer, 
     ChallengeSerializer,
     PositionSerializer,
@@ -190,6 +192,11 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
             qs = qs.filter(is_staff=False)
 
         return qs
+    
+    def get_serializer_class(self):
+        if self.action == 'retrieve':
+            return UserDetailSerializer
+        return UserSerializer
 
 
 class AthleteInfoView(APIView):
@@ -227,7 +234,27 @@ class PositionViewSet(viewsets.ModelViewSet):
     http_method_names = ["get", "post", "delete", "head", "options"]
 
     def create(self, request, *args, **kwargs):
-        return super().create(request, *args, **kwargs)
+        response = super().create(request, *args, **kwargs)
+        
+        if response.status_code == status.HTTP_201_CREATED:
+            position = Position.objects.get(id=response.data['id'])
+            athlete = position.run.athlete
+            position_lat = float(position.latitude)
+            position_lon = float(position.longitude)
+            
+            for item in CollectibleItem.objects.all():
+                item_lat = float(item.latitude)
+                item_lon = float(item.longitude)
+                
+                distance_m = geodesic(
+                    (position_lat, position_lon),
+                    (item_lat, item_lon)
+                ).meters
+                
+                if distance_m < 100:
+                    item.athletes.add(athlete)
+        
+        return response
 
     def get_queryset(self):
         qs = super().get_queryset()
