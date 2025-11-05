@@ -191,6 +191,9 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
         elif t == 'athlete':
             qs = qs.filter(is_staff=False)
 
+        if self.action == 'retrieve':
+            qs = qs.prefetch_related('items')
+
         return qs
     
     def get_serializer_class(self):
@@ -227,7 +230,7 @@ class ChallengeViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 class PositionViewSet(viewsets.ModelViewSet):
-    queryset = Position.objects.select_related("run").order_by("id")
+    queryset = Position.objects.select_related("run", "run__athlete").order_by("id")
     serializer_class = PositionSerializer
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ["run"]
@@ -237,7 +240,7 @@ class PositionViewSet(viewsets.ModelViewSet):
         response = super().create(request, *args, **kwargs)
         
         if response.status_code == status.HTTP_201_CREATED:
-            position = Position.objects.get(id=response.data['id'])
+            position = Position.objects.select_related('run__athlete').get(id=response.data['id'])
             athlete = position.run.athlete
             position_lat = float(position.latitude)
             position_lon = float(position.longitude)
