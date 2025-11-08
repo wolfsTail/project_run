@@ -13,6 +13,7 @@ class Run(models.Model):
     athlete = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='runs')
     status = models.CharField(max_length=16, choices=STATUS_CHOICES, default='init')
     distance = models.FloatField(null=True, blank=True)
+    run_time_seconds = models.IntegerField(null=True, blank=True, default=None)
 
 
 class AthleteInfo(models.Model):
@@ -42,6 +43,7 @@ class Position(models.Model):
     latitude = models.DecimalField(max_digits=8, decimal_places=4)
     longitude = models.DecimalField(max_digits=9, decimal_places=4)
     created_at = models.DateTimeField(auto_now_add=True)
+    date_time = models.DateTimeField(null=True, blank=True)
 
 
 class CollectibleItem(models.Model):
