@@ -193,19 +193,15 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
     ordering_fields = ['date_joined']
 
     def get_queryset(self):
-        qs = self.queryset.exclude(is_superuser=True)
-
+        qs = (self.queryset.exclude(is_superuser=True)
+              .annotate(runs_finished=Count('runs', filter=Q(runs__status='finished'), distinct=True)))
         t = self.request.query_params.get('type')
-        if t == 'coach':
-            qs = qs.filter(is_staff=True)
-        elif t == 'athlete':
-            qs = qs.filter(is_staff=False)
-
+        if t == 'coach': qs = qs.filter(is_staff=True)
+        elif t == 'athlete': qs = qs.filter(is_staff=False)
         if self.action == 'retrieve':
             qs = qs.prefetch_related('items')
-
         return qs
-    
+
     def get_serializer_class(self):
         if self.action == 'retrieve':
             return UserDetailSerializer
