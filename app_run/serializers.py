@@ -98,6 +98,10 @@ class ChallengeSerializer(serializers.ModelSerializer):
 
 
 class PositionSerializer(serializers.ModelSerializer):
+    date_time = serializers.DateTimeField(
+        input_formats=[DATETIME_FMT],
+        format=DATETIME_FMT,
+    )
     class Meta:
         model = Position
         fields = ("id", "run", "latitude", "longitude", "created_at", "date_time")
@@ -126,9 +130,14 @@ class PositionSerializer(serializers.ModelSerializer):
             try:
                 dt = datetime.datetime.strptime(v, DATETIME_FMT)
             except ValueError:
-                pass
+                raise serializers.ValidationError(
+                    f"date_time must match format {DATETIME_FMT} (e.g. 2024-10-12T14:30:15.123456)"
+                )
         else:
             dt = v
+
         if timezone.is_naive(dt):
             dt = timezone.make_aware(dt, timezone.utc)
+        else:
+            dt = dt.astimezone(timezone.utc)
         return dt
