@@ -1,7 +1,12 @@
+import datetime
 from rest_framework import serializers
 from .models import Challenge, Position, Run, AthleteInfo, CollectibleItem
 from django.contrib.auth.models import User
+from django.utils import timezone
 
+
+
+DATETIME_FMT = "%Y-%m-%dT%H:%M:%S.%f"
 
 class UserSerializerInner(serializers.ModelSerializer):
     class Meta:
@@ -95,7 +100,7 @@ class ChallengeSerializer(serializers.ModelSerializer):
 class PositionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Position
-        fields = ("id", "run", "latitude", "longitude", "created_at")
+        fields = ("id", "run", "latitude", "longitude", "created_at", "date_time")
         read_only_fields = ("id", "created_at")
 
     def validate_latitude(self, v):
@@ -115,3 +120,15 @@ class PositionSerializer(serializers.ModelSerializer):
         if run.status != "in_progress":
             raise serializers.ValidationError({"run": "Run must be in status 'in_progress'"})
         return attrs
+    
+    def validate_date_time(self, v):
+        if isinstance(v, str):
+            try:
+                dt = datetime.datetime.strptime(v, DATETIME_FMT)
+            except ValueError:
+                pass
+        else:
+            dt = v
+        if timezone.is_naive(dt):
+            dt = timezone.make_aware(dt, timezone.utc)
+        return dt

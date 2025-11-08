@@ -13,7 +13,7 @@ from django.shortcuts import get_object_or_404
 from django.http import Http404
 from django_filters.rest_framework import DjangoFilterBackend
 from django.db import transaction
-from django.db.models import Count, Q, Sum
+from django.db.models import Count, Q, Sum, Min, Max
 
 from haversine import haversine, Unit
 from geopy.distance import geodesic
@@ -114,24 +114,18 @@ class StopRunApiView(APIView):
             )
 
         with transaction.atomic():
-            current.status = Run.STATUS_CHOICES[2][0]
-            current.save(update_fields=["status"])
-
-            finished_count = Run.objects.filter(
-                athlete=current.athlete, status="finished"
-            ).count()
-
-            if finished_count == 10 and not Challenge.objects.filter(
-                athlete=current.athlete, full_name=TEN_RUNS_CHALLENGE
-            ).exists():
-                Challenge.objects.create(
-                    athlete=current.athlete, full_name=TEN_RUNS_CHALLENGE
-                )
+            # 1) считаем длительность по date_time
+            agg = Position.objects.filter(run=current).aggregate(
+                min_dt=Min("date_time"),
+                max_dt=Max("date_time"),
+            )
+            min_dt, max_dt = agg["min_dt"], agg["max_dt"]
+            run_time_seconds = int((max_dt - min_dt).total_seconds()) if (min_dt and max_dt) else 0
 
             pts = list(
                 Position.objects
                 .filter(run=current)
-                .order_by("created_at", "id")
+                .order_by("date_time", "id")  # ← ТУТ ВАЖНО
                 .values_list("latitude", "longitude")
             )
 
@@ -143,8 +137,23 @@ class StopRunApiView(APIView):
                     distance_km += haversine(prev, cur, unit=Unit.KILOMETERS)
                     prev = cur
 
+            # фиксация статуса + метрик
+            current.status = Run.STATUS_CHOICES[2][0]
             current.distance = round(distance_km, 4)
-            current.save(update_fields=["distance"])
+            current.run_time_seconds = run_time_seconds
+            current.save(update_fields=["status", "distance", "run_time_seconds"])
+
+            # челленджи — как было
+            finished_count = Run.objects.filter(
+                athlete=current.athlete, status="finished"
+            ).count()
+
+            if finished_count == 10 and not Challenge.objects.filter(
+                athlete=current.athlete, full_name=TEN_RUNS_CHALLENGE
+            ).exists():
+                Challenge.objects.create(
+                    athlete=current.athlete, full_name=TEN_RUNS_CHALLENGE
+                )
 
             total_km = Run.objects.filter(
                 athlete=current.athlete, status="finished"
@@ -160,6 +169,7 @@ class StopRunApiView(APIView):
                 "id": current.id,
                 "status": current.status,
                 "distance": current.distance,
+                "run_time_seconds": current.run_time_seconds,   # ← отдаем длительность
             },
             status=status.HTTP_200_OK,
         )
