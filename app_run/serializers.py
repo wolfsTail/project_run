@@ -125,25 +125,25 @@ class PositionSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({"run": "Run must be in status 'in_progress'"})
         return attrs
     
-def validate_date_time(self, v):
-    """
-    DRF уже распарсит строку по input_formats в datetime.
-    Здесь гарантируем корректный формат ошибки и приводим к UTC,
-    не используя django.utils.timezone.utc.
-    """
-    if isinstance(v, str):
-        try:
-            dt = datetime.datetime.strptime(v, DATETIME_FMT)
-        except ValueError:
-            raise serializers.ValidationError(
-                f"date_time must match format {DATETIME_FMT} (e.g. 2024-10-12T14:30:15.123456)"
-            )
-        dt = dt.replace(tzinfo=dt_timezone.utc)
-    else:
-        dt = v
-        if dt.tzinfo is None:
+    def validate_date_time(self, v):
+        """
+        DRF уже распарсит строку по input_formats в datetime.
+        Здесь гарантируем корректный формат ошибки и приводим к UTC,
+        не используя django.utils.timezone.utc.
+        """
+        if isinstance(v, str):
+            try:
+                dt = datetime.datetime.strptime(v, DATETIME_FMT)
+            except ValueError:
+                raise serializers.ValidationError(
+                    f"date_time must match format {DATETIME_FMT} (e.g. 2024-10-12T14:30:15.123456)"
+                )
             dt = dt.replace(tzinfo=dt_timezone.utc)
         else:
-            dt = dt.astimezone(dt_timezone.utc)
+            dt = v
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=dt_timezone.utc)
+            else:
+                dt = dt.astimezone(dt_timezone.utc)
 
-    return dt
+        return dt
